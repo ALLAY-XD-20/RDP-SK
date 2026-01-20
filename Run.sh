@@ -2,61 +2,60 @@
 set -e
 
 # ================================
-# Configuration
+# USER CONFIG (EDIT THESE)
 # ================================
-VM_NAME="windows-server-2025"
+WIN_USER="docker"
+WIN_PASS="Docker@2025!"
 DISK_SIZE="120G"
 
-DATA_DIR="$(pwd)/data"
-ISO_DIR="$DATA_DIR/iso"
-DISK_DIR="$DATA_DIR/disk"
-
-WIN_ISO="windows-server-2025.iso"
-VIRTIO_ISO="virtio-win.iso"
-
-WIN_ISO_URL="https://software-static.download.prss.microsoft.com/dbazure/888969d5-f34g-4e03-ac9d-1f9786c66749/26100.1742.240906-0331.ge_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso"
-VIRTIO_ISO_URL="https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/archive-virtio/virtio-win-0.1.285-1/virtio-win-0.1.285.iso"
-
-DISK_IMAGE="$DISK_DIR/${VM_NAME}.qcow2"
+# ================================
+# SYSTEM CONFIG
+# ================================
+CONTAINER_NAME="windows-server-2025"
+DATA_DIR="$HOME/windows-data"
 
 # ================================
-# Prepare directories
+# HARD REQUIREMENTS CHECK
 # ================================
-mkdir -p "$ISO_DIR" "$DISK_DIR"
-
-# ================================
-# Download ISOs if missing
-# ================================
-[ ! -f "$ISO_DIR/$WIN_ISO" ] && curl -L "$WIN_ISO_URL" -o "$ISO_DIR/$WIN_ISO"
-[ ! -f "$ISO_DIR/$VIRTIO_ISO" ] && curl -L "$VIRTIO_ISO_URL" -o "$ISO_DIR/$VIRTIO_ISO"
-
-# ================================
-# Create disk if missing
-# ================================
-if [ ! -f "$DISK_IMAGE" ]; then
-  qemu-img create -f qcow2 "$DISK_IMAGE" "$DISK_SIZE"
+if [ ! -e /dev/kvm ]; then
+  echo "ERROR: /dev/kvm not found (KVM required)"
+  exit 1
 fi
 
 # ================================
-# Run Windows VM in Docker
+# PREPARE STORAGE (PERSIST DOWNLOAD)
 # ================================
-docker run -it --rm \
-  --name "$VM_NAME" \
+mkdir -p "$DATA_DIR"
+
+# ================================
+# PERFORMANCE TUNING (SAFE)
+# ================================
+export DOCKER_BUILDKIT=1
+
+# ================================
+# REMOVE OLD CONTAINER (SAFE)
+# ================================
+docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+
+# ================================
+# RUN WINDOWS (DETACHED / ALWAYS ON)
+# ================================
+docker run -d \
+  --name "$CONTAINER_NAME" \
+  --restart unless-stopped \
   --device /dev/kvm \
+  --cap-add NET_ADMIN \
+  --security-opt seccomp=unconfined \
+  --memory 24g \
+  --cpus 8 \
   -p 3389:3389 \
-  -v "$ISO_DIR:/isos" \
-  -v "$DISK_DIR:/disk" \
-  qemu/qemu:latest \
-  qemu-system-x86_64 \
-    -enable-kvm \
-    -m 8G \
-    -cpu host \
-    -smp 4 \
-    -machine q35 \
-    -drive file=/disk/${VM_NAME}.qcow2,format=qcow2,if=virtio \
-    -cdrom /isos/$WIN_ISO \
-    -drive file=/isos/$VIRTIO_ISO,media=cdrom \
-    -netdev user,id=net0,hostfwd=tcp::3389-:3389 \
-    -device virtio-net-pci,netdev=net0 \
-    -vga qxl \
-    -boot order=d
+  -p 8006:8006 \
+  -v "$DATA_DIR:/storage" \
+  -e VERSION=2025 \
+  -e DISK_SIZE="$DISK_SIZE" \
+  -e USERNAME="$WIN_USER" \
+  -e PASSWORD="$WIN_PASS" \
+  -e AUTO_START=yes \
+  -e SKIP_CHECKS=yes \
+  -e ENABLE_KVM=yes \
+  dockurr/windows
