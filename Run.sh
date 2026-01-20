@@ -2,11 +2,17 @@
 set -e
 
 # ================================
-# USER CONFIG (EDIT THESE)
+# FIXED USER CONFIG (NO CHANGE)
 # ================================
 WIN_USER="docker"
 WIN_PASS="Docker@2025!"
-DISK_SIZE="120G"
+
+# ================================
+# ASK USER FOR RESOURCES
+# ================================
+read -p "Enter CPU cores (example: 8): " CPU_CORES
+read -p "Enter RAM size (example: 24g): " RAM_SIZE
+read -p "Enter Disk size (example: 120G): " DISK_SIZE
 
 # ================================
 # SYSTEM CONFIG
@@ -23,22 +29,22 @@ if [ ! -e /dev/kvm ]; then
 fi
 
 # ================================
-# PREPARE STORAGE (PERSIST DOWNLOAD)
+# PREPARE STORAGE
 # ================================
 mkdir -p "$DATA_DIR"
 
 # ================================
-# PERFORMANCE TUNING (SAFE)
+# PERFORMANCE TUNING
 # ================================
 export DOCKER_BUILDKIT=1
 
 # ================================
-# REMOVE OLD CONTAINER (SAFE)
+# REMOVE OLD CONTAINER
 # ================================
 docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
 # ================================
-# RUN WINDOWS (DETACHED / ALWAYS ON)
+# RUN WINDOWS CONTAINER
 # ================================
 docker run -d \
   --name "$CONTAINER_NAME" \
@@ -46,8 +52,8 @@ docker run -d \
   --device /dev/kvm \
   --cap-add NET_ADMIN \
   --security-opt seccomp=unconfined \
-  --memory 24g \
-  --cpus 8 \
+  --memory "$RAM_SIZE" \
+  --cpus "$CPU_CORES" \
   -p 3389:3389 \
   -p 8006:8006 \
   -v "$DATA_DIR:/storage" \
