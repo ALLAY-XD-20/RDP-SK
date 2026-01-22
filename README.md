@@ -50,6 +50,3 @@ This Bash script automates the setup of a **Windows 11 virtual machine** on Ubun
 
 ```
 bash <(curl -fsSL https://raw.githubusercontent.com/ALLAY-XD-20/RDP-SK/refs/heads/main/Run.sh)
-
-## MULTIPLE INSTALL
-```
