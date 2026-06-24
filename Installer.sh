@@ -12,7 +12,7 @@ AUTHOR: Pawan
 =========================================
 
 WIN_USER="Docker"
-WIN_PASS="admin123"
+WIN_PASS="Docker@2025!"
 CONTAINER_NAME="windows-server-2025"
 DATA_DIR="$HOME/windows-data"
 
